@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuralLens — AI Object Detection</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Loading screen -->
+  <div id="loading-screen">
+    <div class="loader-content">
+      <div class="loader-ring">
+        <div class="loader-ring-inner"></div>
+      </div>
+      <div class="loader-logo">
+        <span class="material-icons-round">hub</span>
+        <span>NeuralLens</span>
+      </div>
+      <p id="loading-status">Loading AI models…</p>
+      <div class="loader-bar-track"><div id="loader-bar" class="loader-bar"></div></div>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="hidden">
+
+    <!-- Top bar -->
+    <header class="topbar">
+      <div class="topbar-logo">
+        <span class="material-icons-round">hub</span>
+        <span>NeuralLens</span>
+      </div>
+      <div class="topbar-actions">
+        <button id="btn-autodetect" class="btn-icon" title="Toggle Auto-Detect">
+          <span class="material-icons-round">autorenew</span>
+        </button>
+        <button id="btn-flip" class="btn-icon" title="Flip Camera">
+          <span class="material-icons-round">flip_camera_ios</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Viewfinder -->
+    <div class="viewfinder" id="viewfinder">
+      <video id="video" autoplay muted playsinline></video>
+      <canvas id="canvas-overlay"></canvas>
+
+      <!-- Corner brackets -->
+      <div class="bracket tl"></div>
+      <div class="bracket tr"></div>
+      <div class="bracket bl"></div>
+      <div class="bracket br"></div>
+
+      <!-- Scan line animation (active during auto-detect) -->
+      <div class="scan-line" id="scan-line"></div>
+
+      <!-- Status badge -->
+      <div class="status-badge" id="status-badge">
+        <span class="material-icons-round">visibility</span>
+        <span id="status-text">Ready to scan</span>
+      </div>
+    </div>
+
+    <!-- Scan button -->
+    <div class="scan-area">
+      <button id="btn-scan" class="btn-scan">
+        <span class="material-icons-round">search</span>
+        <span>Scan Object</span>
+      </button>
+      <p class="hint" id="auto-hint">Tap to scan · or enable <strong>auto-detect</strong></p>
+    </div>
+
+    <!-- Results panel -->
+    <div class="results-panel" id="results-panel">
+      <div class="results-handle"></div>
+      <div class="results-header">
+        <span class="material-icons-round">auto_awesome</span>
+        <h2>Detection Results</h2>
+        <button id="btn-close-results" class="btn-icon-sm">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      <div id="results-list" class="results-list"></div>
+      <p id="no-results" class="no-results hidden">No objects detected. Try again with better lighting.</p>
+    </div>
+
+  </div>
+
+  <!-- Scripts: TensorFlow.js ecosystem -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
