@@ -22,6 +22,8 @@ const btnFlip        = document.getElementById('btn-flip');
 const btnAutodetect  = document.getElementById('btn-autodetect');
 const btnCloseResult = document.getElementById('btn-close-results');
 
+const detectFlash    = document.getElementById('detect-flash');
+const viewfinder     = document.getElementById('viewfinder');
 const scanLine       = document.getElementById('scan-line');
 const statusBadge    = document.getElementById('status-badge');
 const statusText     = document.getElementById('status-text');
@@ -137,9 +139,14 @@ window.addEventListener('resize', resizeOverlay);
 // ── Show app after loading ─────────────────────────────────────────────────────
 function showApp() {
   loadingScreen.classList.add('fade-out');
-  setTimeout(() => { loadingScreen.style.display = 'none'; }, 500);
+  setTimeout(() => { loadingScreen.style.display = 'none'; }, 600);
   app.classList.remove('hidden');
+  // Slight delay so CSS transition fires
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    app.classList.add('visible');
+  }));
   setStatus('ready', '✦ Ready to scan');
+  btnScan.classList.add('idle-pulse');
 }
 
 // ── Camera error UI ───────────────────────────────────────────────────────────
@@ -156,9 +163,16 @@ function showCameraError(err) {
 async function runDetection() {
   if (isDetecting) return;
   isDetecting = true;
-  setStatus('detecting', 'Detecting…');
-  clearOverlay();
-  closeResults();
+
+  // Visual: flash, button spinner, viewfinder detecting state
+  triggerFlash();
+  triggerHaptic();
+  btnScan.classList.remove('idle-pulse');
+  btnScan.disabled = true;
+  setScanBtnLoading(true);
+  viewfinder.classList.add('detecting');
+  setStatus('detecting', 'Analyzing…');
+  showSkeletonResults();
 
   try {
     const imageData = captureFrame();
@@ -172,9 +186,18 @@ async function runDetection() {
   } catch (err) {
     console.error('Detection error:', err);
     setStatus('ready', '⚠ Detection failed');
+    resultsList.innerHTML = '';
+    noResults.classList.remove('hidden');
+    openResults();
   } finally {
     isDetecting = false;
-    if (!autoDetectActive) setStatus('ready', '✦ Ready to scan');
+    viewfinder.classList.remove('detecting');
+    setScanBtnLoading(false);
+    btnScan.disabled = false;
+    if (!autoDetectActive) {
+      setStatus('ready', '✦ Ready to scan');
+      btnScan.classList.add('idle-pulse');
+    }
   }
 }
 
@@ -328,6 +351,7 @@ function startAutoDetect() {
   autoDetectActive = true;
   btnAutodetect.classList.add('active');
   scanLine.classList.add('active');
+  btnScan.classList.remove('idle-pulse');
   setStatus('detecting', 'Auto-detecting…');
   scheduleAutoDetect();
 }
@@ -337,6 +361,7 @@ function stopAutoDetect() {
   btnAutodetect.classList.remove('active');
   scanLine.classList.remove('active');
   cancelAnimationFrame(autoDetectFrame);
+  btnScan.classList.add('idle-pulse');
   setStatus('ready', '✦ Ready to scan');
 }
 
@@ -363,8 +388,11 @@ function setStatus(state, text) {
 }
 
 // ── Event listeners ────────────────────────────────────────────────────────────
-btnScan.addEventListener('click', () => {
-  if (!autoDetectActive) runDetection();
+btnScan.addEventListener('click', (e) => {
+  if (!autoDetectActive) {
+    addRipple(btnScan, e);
+    runDetection();
+  }
 });
 
 btnFlip.addEventListener('click', async () => {
@@ -372,6 +400,9 @@ btnFlip.addEventListener('click', async () => {
   facingMode = facingMode === 'environment' ? 'user' : 'environment';
   clearOverlay();
   closeResults();
+  // Spin animation
+  btnFlip.classList.add('spinning');
+  btnFlip.addEventListener('animationend', () => btnFlip.classList.remove('spinning'), { once: true });
   try {
     await startCamera();
   } catch (err) {
@@ -391,6 +422,65 @@ btnCloseResult.addEventListener('click', () => {
   closeResults();
   clearOverlay();
 });
+
+// ── Visual feedback helpers ────────────────────────────────────────────────────
+
+// Brief white flash on the viewfinder
+function triggerFlash() {
+  detectFlash.classList.add('flash');
+  setTimeout(() => detectFlash.classList.remove('flash'), 120);
+}
+
+// Mobile haptic feedback (if supported)
+function triggerHaptic() {
+  if (navigator.vibrate) navigator.vibrate(30);
+}
+
+// Ripple effect on a button at pointer position
+function addRipple(btn, e) {
+  const rect = btn.getBoundingClientRect();
+  const rx = ((e.clientX - rect.left) / rect.width * 100).toFixed(1) + '%';
+  const ry = ((e.clientY - rect.top)  / rect.height * 100).toFixed(1) + '%';
+  btn.style.setProperty('--rx', rx);
+  btn.style.setProperty('--ry', ry);
+  btn.classList.add('rippling');
+  setTimeout(() => btn.classList.remove('rippling'), 550);
+}
+
+// Show/hide loading spinner inside the scan button
+function setScanBtnLoading(on) {
+  const icon = btnScan.querySelector('.material-icons-round');
+  const text = btnScan.querySelector('span:last-child');
+  if (on) {
+    icon.textContent = 'radar';
+    icon.style.animation = 'radarSpin 1s linear infinite';
+    text.textContent = 'Scanning…';
+  } else {
+    icon.style.animation = '';
+    icon.textContent = 'search';
+    text.textContent = 'Scan Object';
+  }
+}
+
+// Show skeleton placeholder cards while detection runs
+function showSkeletonResults() {
+  resultsList.innerHTML = '';
+  noResults.classList.add('hidden');
+  for (let i = 0; i < 3; i++) {
+    const s = document.createElement('div');
+    s.className = 'skeleton-card';
+    s.style.animationDelay = (i * 0.07) + 's';
+    s.innerHTML = `
+      <div class="skel skel-title"></div>
+      <div class="skel skel-bar"></div>
+      <div class="skel-tags">
+        <div class="skel skel-tag"></div>
+        <div class="skel skel-tag"></div>
+      </div>`;
+    resultsList.appendChild(s);
+  }
+  openResults();
+}
 
 // ── Utilities ──────────────────────────────────────────────────────────────────
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
